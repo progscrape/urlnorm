@@ -184,7 +184,6 @@ impl UrlNormalizer {
                 }
             }
             query_pairs.sort();
-            println!("{:?}", query_pairs);
             for (key, value) in query_pairs {
                 if !self.ignored_query_params.is_match(key) {
                     out.push(CompareToken(key));
@@ -277,13 +276,12 @@ mod test {
             let (url, existing_norm) = line.split_once("\",\"").expect("Expected one comma");
             let url = &url[1..url.len()];
             let existing_norm = &existing_norm[0..existing_norm.len()-1];
-            println!("{}", url);
             let url = Url::parse(url).expect("Failed to parse URL");
             let expected_norm = norm.compute_normalization_string(&url);
             // assert_eq!(existing_norm, expected_norm);
             expected += &format!("\"{}\",\"{}\"\n", url, expected_norm);
         }
-        // File::create("testdata2.txt").unwrap().write_all(expected.as_bytes()).unwrap();
+        File::create("testdata2.txt").unwrap().write_all(expected.as_bytes()).unwrap();
     }
 
     #[rstest]
