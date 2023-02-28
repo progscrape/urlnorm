@@ -1,10 +1,24 @@
 use std::str::Chars;
 
-use regex::{Regex, RegexSet};
+use regex::Regex;
 use url::Url;
 
 /// Defines how URL normalization will work. This struct offers reasonable defaults, as well as a fluent interface for building normalization.
-struct Options {
+///
+/// Construct an empty `Options` object and provide a query parameter:
+///
+/// ```
+/// # use urlnorm::*;
+/// let options = Options::new().with_ignored_query_params(["fbclid"]);
+/// ```
+///
+/// Construct a default `Options` object and modify the query parameters:
+///
+/// ```
+/// # use urlnorm::*;
+/// let options = Options::default().with_ignored_query_params(["fbclid"]);
+/// ```
+pub struct Options {
     pub ignored_query_params: Vec<String>,
     pub trimmed_host_prefixes: Vec<String>,
     pub trimmed_path_extension_suffixes: Vec<String>,
@@ -70,7 +84,12 @@ impl Options {
     fn compile_trimmed_host_prefixes_regex(
         trimmed_host_prefixes: Vec<String>,
     ) -> Result<Regex, regex::Error> {
-        Regex::new(&format!("\\A({})", trimmed_host_prefixes.join("|")))
+        if trimmed_host_prefixes.is_empty() {
+            // A regular expression prefix that matches nothing (NUL byte)
+            Regex::new(&"\\A[\0]")
+        } else {
+            Regex::new(&format!("\\A({})", trimmed_host_prefixes.join("|")))
+        }
     }
 
     fn compile_trimmed_path_extension_suffixes_regex(
@@ -135,11 +154,11 @@ pub struct UrlNormalizer {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct CompareToken<'a>(&'a str);
+struct CompareToken<'a>(&'a str);
 
 /// We will need to use this if we end up with a non-unescaping URL parser. Not currently used, but tested at a basic level.
 #[derive(Debug)]
-pub struct EscapedCompareToken<'a>(&'a str);
+struct EscapedCompareToken<'a>(&'a str);
 
 impl<'a> PartialEq for EscapedCompareToken<'a> {
     fn eq(&self, other: &Self) -> bool {
@@ -244,16 +263,24 @@ impl UrlNormalizer {
     }
 
     /// Are these two URLs considered the same?
+    ///
     /// ```
     /// # use url::Url;
     /// # use urlnorm::UrlNormalizer;
-    /// assert!(UrlNormalizer::default().are_same(&Url::parse("http://google.com").unwrap(), &Url::parse("https://google.com").unwrap()))
+    /// assert!(UrlNormalizer::default().are_same(&Url::parse("http://google.com").unwrap(), &Url::parse("https://google.com").unwrap()));
     /// ```
     pub fn are_same(&self, a: &Url, b: &Url) -> bool {
         self.token_stream(a).eq(self.token_stream(b))
     }
 
-    /// Compute a normalization string that can be persisted for later comparison.
+    /// Compute a normalization string that can be persisted for later comparison. If two normalization strings are identical, the URLs are
+    /// considered to be the same.
+    ///
+    /// ```
+    /// # use url::Url;
+    /// # use urlnorm::UrlNormalizer;
+    /// assert_eq!(UrlNormalizer::default().compute_normalization_string(&Url::parse("http://www.google.com").unwrap()), "google.com:");
+    /// ```
     pub fn compute_normalization_string(&self, url: &Url) -> String {
         let mut s = String::with_capacity(url.as_str().len());
         for bit in self.token_stream(url) {
@@ -263,9 +290,13 @@ impl UrlNormalizer {
         s
     }
 
-    // Note that clippy totally breaks this function
-    #[allow(clippy::manual_filter)]
     /// Normalize the host portion of a `Url`.
+    ///
+    /// ```
+    /// # use url::Url;
+    /// # use urlnorm::UrlNormalizer;
+    /// assert_eq!(UrlNormalizer::default().normalize_host(&Url::parse("http://www.google.com/?q=search").unwrap()), Some("google.com"));
+    /// ```
     pub fn normalize_host<'a>(&self, url: &'a Url) -> Option<&'a str> {
         if let Some(mut host) = url.host_str() {
             while let Some(stripped) = self.trimmed_host_prefixes.find_at(host, 0) {
@@ -294,6 +325,19 @@ mod test {
     #[fixture]
     fn norm() -> UrlNormalizer {
         UrlNormalizer::default()
+    }
+
+    #[test]
+    fn test_with_empty_options() {
+        let options = Options::new();
+        let norm = options.compile().unwrap();
+        let url = Url::parse("http://www.google.com").unwrap();
+        assert!(norm.are_same(&url, &Url::parse("https://www.google.com").unwrap()));
+        assert_eq!(norm.compute_normalization_string(&url), "www.google.com:");
+        assert!(!norm.are_same(
+            &Url::parse("https://www.google.com?fbclid=1").unwrap(),
+            &Url::parse("https://www.google.com?fbclid=2").unwrap()
+        ));
     }
 
     /// Ensure that we don't accidentally break the normalization strings between versions.
