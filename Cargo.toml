@@ -2,6 +2,8 @@
 name = "urlnorm"
 version = "0.1.0"
 edition = "2021"
+description = "A URL normalization library for Rust"
+license = "Apache OR MIT"
 
 [features]
 nightly = []
