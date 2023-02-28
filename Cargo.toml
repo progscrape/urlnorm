@@ -12,3 +12,8 @@ regex = "1.7"
 
 [dev_dependencies]
 rstest = "0"
+criterion = "0.4"
+
+[[bench]]
+name = "bench"
+harness = false

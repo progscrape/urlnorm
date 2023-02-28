@@ -1,10 +1,6 @@
-#![cfg_attr(feature = "nightly", feature(test))]
-#![cfg(feature = "nightly")]
-extern crate test;
-
 use std::str::Chars;
 
-use regex::Regex;
+use regex::{Regex, RegexSet};
 use url::Url;
 
 /// Defines how URL normalization will work. This struct offers reasonable defaults, as well as a fluent interface for building normalization.
@@ -65,20 +61,35 @@ impl Options {
         }
     }
 
+    fn compile_ignored_query_params_regex(
+        ignored_query_params: Vec<String>,
+    ) -> Result<Regex, regex::Error> {
+        Regex::new(&format!("^({})$", ignored_query_params.join("|")))
+    }
+
+    fn compile_trimmed_host_prefixes_regex(
+        trimmed_host_prefixes: Vec<String>,
+    ) -> Result<Regex, regex::Error> {
+        Regex::new(&format!("\\A({})", trimmed_host_prefixes.join("|")))
+    }
+
+    fn compile_trimmed_path_extension_suffixes_regex(
+        trimmed_path_extension_suffixes: Vec<String>,
+    ) -> Result<Regex, regex::Error> {
+        Regex::new(&format!("({})$", trimmed_path_extension_suffixes.join("|")))
+    }
+
     pub fn compile(self) -> Result<UrlNormalizer, regex::Error> {
         Ok(UrlNormalizer {
-            ignored_query_params: Regex::new(&format!(
-                "^({})$",
-                self.ignored_query_params.join("|")
-            ))?,
-            trimmed_host_prefixes: Regex::new(&format!(
-                "\\A{}",
-                self.trimmed_host_prefixes.join("|")
-            ))?,
-            trimmed_path_extension_suffixes: Regex::new(&format!(
-                "{}$",
-                self.trimmed_path_extension_suffixes.join("|")
-            ))?,
+            ignored_query_params: Self::compile_ignored_query_params_regex(
+                self.ignored_query_params,
+            )?,
+            trimmed_host_prefixes: Self::compile_trimmed_host_prefixes_regex(
+                self.trimmed_host_prefixes,
+            )?,
+            trimmed_path_extension_suffixes: Self::compile_trimmed_path_extension_suffixes_regex(
+                self.trimmed_path_extension_suffixes,
+            )?,
             path_extension_length: self.path_extension_length,
         })
     }
@@ -274,23 +285,13 @@ impl Default for UrlNormalizer {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use super::*;
     use rstest::*;
 
     #[fixture]
     fn norm() -> UrlNormalizer {
         UrlNormalizer::default()
-    }
-
-    #[cfg(feature = "nightly")]
-    #[bench]
-    fn perf_test_normalization(bench: &mut test::Bencher) {
-        let url = Url::parse("http://content.usatoday.com/communities/sciencefair/post/2011/07/invasion-of-the-viking-women-unearthed/1?csp=34tech&utm_source=feedburner&utm_medium=feed&utm_campaign=Feed:+usatoday-TechTopStories+%28Tech+-+Top+Stories%29&siteID=je6NUbpObpQ-K0N7ZWh0LJjcLzI4zsnGxg#.VAcNjWOna51").expect("Failed to parse this URL");
-        let norm = UrlNormalizer::default();
-        bench.iter(|| {
-            norm.compute_normalization_string(&url);
-        })
     }
 
     /// Ensure that we don't accidentally break the normalization strings between versions.
