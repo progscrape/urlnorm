@@ -271,17 +271,18 @@ mod test {
     fn test_existing_data() {
         let testdata = include_str!("testdata.txt").trim_end_matches('\n');
         let norm = norm();
-        let mut expected = "".to_owned();
+        // Note that we can update the test data as needed between versions
+        // let mut expected = "".to_owned();
         for line in testdata.split('\n') {
             let (url, existing_norm) = line.split_once("\",\"").expect("Expected one comma");
             let url = &url[1..url.len()];
             let existing_norm = &existing_norm[0..existing_norm.len()-1];
             let url = Url::parse(url).expect("Failed to parse URL");
             let expected_norm = norm.compute_normalization_string(&url);
-            // assert_eq!(existing_norm, expected_norm);
-            expected += &format!("\"{}\",\"{}\"\n", url, expected_norm);
+            assert_eq!(existing_norm, expected_norm);
+            // expected += &format!("\"{}\",\"{}\"\n", url, expected_norm);
         }
-        File::create("testdata2.txt").unwrap().write_all(expected.as_bytes()).unwrap();
+        // File::create("testdata2.txt").unwrap().write_all(expected.as_bytes()).unwrap();
     }
 
     #[rstest]
