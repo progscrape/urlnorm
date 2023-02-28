@@ -271,8 +271,6 @@ impl Default for UrlNormalizer {
 
 #[cfg(test)]
 mod test {
-    use std::{fs::File, io::Write};
-
     use super::*;
     use rstest::*;
 
