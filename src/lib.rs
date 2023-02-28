@@ -12,7 +12,7 @@ struct Options {
 }
 
 /// Default query parameters that are ignored.
-const DEFAULT_IGNORED_QUERY_PARAMS: [&str; 13] = [
+const DEFAULT_IGNORED_QUERY_PARAMS: [&str; 15] = [
     "utm_source",
     "utm_medium",
     "utm_campaign",
@@ -26,11 +26,17 @@ const DEFAULT_IGNORED_QUERY_PARAMS: [&str; 13] = [
     "fbclid",
     "mc_cid",
     "mc_eid",
+    "[Ww][Tt]\\.mc_(id|ev)",
+    "__[a-z]+",
 ];
 
 /// Regular expression that trims common www- and mobile-style prefixes. From an analysis of the existing scrape dump, we have
 /// patterns like: www, www1, www-03, www-psych, www-refresh, m, mobile, etc.
-const DEFAULT_WWW_PREFIX: &str = "\\A(www?[0-9]*|m|mobile)(-[a-z0-9]{1,3})?\\.";
+const DEFAULT_WWW_PREFIX: &str = r#"(?x)
+    (www?[0-9]*|m|mobile)
+    (-[a-z0-9]{1,3})?
+    \.
+"#;
 
 /// By default, trim extensions that look like .html, .html5, etc.
 const DEFAULT_EXTENSION_SUFFIX: &str = "[a-zA-Z]+[0-9]?$";
@@ -58,7 +64,7 @@ impl Options {
 
     pub fn compile(self) -> Result<UrlNormalizer, regex::Error> {
         Ok(UrlNormalizer {
-            ignored_query_params: Regex::new(&self.ignored_query_params.join("|"))?,
+            ignored_query_params: Regex::new(&format!("^({})$", self.ignored_query_params.join("|")))?,
             trimmed_host_prefixes: Regex::new(&format!("\\A{}", self.trimmed_host_prefixes.join("|")))?,
             trimmed_path_extension_suffixes: Regex::new(&format!("{}$", self.trimmed_path_extension_suffixes.join("|")))?,
             path_extension_length: self.path_extension_length
@@ -139,12 +145,8 @@ impl UrlNormalizer {
     /// Generates a stream of token bits that can be used to compare whether URLs are "normalized-equal", that is: whether two URLs normalize to the same stream of tokens.
     fn token_stream<'a, 'b>(&'a self, url: &'b Url) -> impl Iterator<Item = CompareToken<'b>> {
         let mut out = vec![];
-        let host = url.host_str().unwrap_or_default();
-        if let Some(stripped) = self.trimmed_host_prefixes.find_at(host, 0) {
-            out.push(CompareToken(&host[stripped.end()..host.len()]));
-        } else {
-            out.push(CompareToken(host));
-        }
+        let host = self.normalize_host(url).unwrap_or_default();
+        out.push(CompareToken(host));
         let path = url.path_segments();
         if let Some(path) = path {
             let mut iter = path.filter(|path| !path.is_empty());
@@ -176,12 +178,13 @@ impl UrlNormalizer {
             for bit in query.split('&') {
                 if let Some((a, b)) = bit.split_once('=') {
                     query_pairs.push((a, b));
-                }
+                } else
                 {
                     query_pairs.push((bit, ""));
                 }
             }
             query_pairs.sort();
+            println!("{:?}", query_pairs);
             for (key, value) in query_pairs {
                 if !self.ignored_query_params.is_match(key) {
                     out.push(CompareToken(key));
@@ -204,6 +207,11 @@ impl UrlNormalizer {
     }
 
     /// Are these two URLs considered the same?
+    /// ```
+    /// # use url::Url;
+    /// # use urlnorm::UrlNormalizer;
+    /// assert!(UrlNormalizer::default().are_same(&Url::parse("http://google.com").unwrap(), &Url::parse("https://google.com").unwrap()))
+    /// ```
     pub fn are_same(&self, a: &Url, b: &Url) -> bool {
         self.token_stream(a).eq(self.token_stream(b))
     }
@@ -222,12 +230,11 @@ impl UrlNormalizer {
     #[allow(clippy::manual_filter)]
     /// Normalize the host portion of a `Url`.
     pub fn normalize_host<'a>(&self, url: &'a Url) -> Option<&'a str> {
-        if let Some(s) = url.host_str() {
-            if let Some(n) = self.trimmed_host_prefixes.shortest_match_at(s, 0) {
-                Some(&s[n..])
-            } else {
-                Some(s)
+        if let Some(mut host) = url.host_str() {
+            while let Some(stripped) = self.trimmed_host_prefixes.find_at(host, 0) {
+                host = &host[stripped.end()..host.len()];
             }
+            Some(host)
         } else {
             None
         }
@@ -242,6 +249,8 @@ impl Default for UrlNormalizer {
 
 #[cfg(test)]
 mod test {
+    use std::{fs::File, io::Write};
+
     use super::*;
     use rstest::*;
 
@@ -258,14 +267,37 @@ mod test {
         }
     }
 
+    /// Ensure that we don't accidentally break the normalization strings between versions.
+    #[test]
+    fn test_existing_data() {
+        let testdata = include_str!("testdata.txt").trim_end_matches('\n');
+        let norm = norm();
+        let mut expected = "".to_owned();
+        for line in testdata.split('\n') {
+            let (url, existing_norm) = line.split_once("\",\"").expect("Expected one comma");
+            let url = &url[1..url.len()];
+            let existing_norm = &existing_norm[0..existing_norm.len()-1];
+            println!("{}", url);
+            let url = Url::parse(url).expect("Failed to parse URL");
+            let expected_norm = norm.compute_normalization_string(&url);
+            // assert_eq!(existing_norm, expected_norm);
+            expected += &format!("\"{}\",\"{}\"\n", url, expected_norm);
+        }
+        // File::create("testdata2.txt").unwrap().write_all(expected.as_bytes()).unwrap();
+    }
+
     #[rstest]
     #[case("http://www.example.com", "example.com")]
+    #[case("http://m.www.example.com", "example.com")]
     #[case("http://www1.example.com", "example.com")]
     #[case("http://ww1.example.com", "example.com")]
     #[case("http://test.www.example.com", "test.www.example.com")]
     #[case("http://www-03.example.com", "example.com")]
     #[case("http://m.example.com", "example.com")]
+    #[case("http://m.m.m.m.m.example.com", "example.com")]
     #[case("http://mobile.example.com", "example.com")]
+    // Negative cases
+    #[case("http://bwwwww.example.com", "bwwwww.example.com")]
     fn test_host_normalization(norm: UrlNormalizer, #[case] a: &str, #[case] b: &str) {
         assert_eq!(norm.normalize_host(&Url::parse(a).expect("url")), Some(b));
     }
@@ -329,6 +361,7 @@ mod test {
     #[case("http://x.com?utm_source=foo", "http://x.com")]
     #[case("http://x.com?fbclid=foo&gclid=bar", "http://x.com")]
     #[case("http://x.com?fbclid=foo", "http://x.com?fbclid=basdf")]
+    #[case("http://archinte.jamanetwork.com/article.aspx?articleid=1898878&__hstc=9292970.6d480b0896ec071bae4c3d40c40ec7d5.1407456000124.1407456000125.1407456000126.1&__hssc=9292970.1.1407456000127&__hsfp=1314462730", "http://archinte.jamanetwork.com/article.aspx?articleid=1898878")]
     // Ignored fragments
     #[case("http://x.com", "http://x.com#something")]
     fn test_url_normalization_same(norm: UrlNormalizer, #[case] a: &str, #[case] b: &str) {
@@ -345,6 +378,9 @@ mod test {
     #[case("https://google.com/abc", "https://google.com/def")]
     #[case("https://google.com/?page=1", "https://google.com/?page=2")]
     #[case("https://google.com/?page=%31", "https://google.com/?page=%32")]
+    #[case("https://amazon.com/product/ref=a", "https://amazon.com/product/ref=b")]
+    // Slightly modified query string param
+    #[case("http://x.com?xfbclid=foo", "http://x.com?xfbclid=basdf")]
     // Examples of real URLs that should not be normalized together
     #[case("http://arxiv.org/abs/1405.0126", "http://arxiv.org/abs/1405.0351")]
     #[case(
