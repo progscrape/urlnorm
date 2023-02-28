@@ -44,8 +44,7 @@ const DEFAULT_EXTENSION_SUFFIX: &str = "[a-zA-Z]+[0-9]?$";
 impl Default for Options {
     fn default() -> Self {
         let new = Self::new();
-        new
-            .with_ignored_query_params(DEFAULT_IGNORED_QUERY_PARAMS)
+        new.with_ignored_query_params(DEFAULT_IGNORED_QUERY_PARAMS)
             .with_trimmed_host_prefixes([DEFAULT_WWW_PREFIX])
             .with_trimmed_path_extension_suffixes([DEFAULT_EXTENSION_SUFFIX])
             .with_path_extension_length(6)
@@ -64,25 +63,44 @@ impl Options {
 
     pub fn compile(self) -> Result<UrlNormalizer, regex::Error> {
         Ok(UrlNormalizer {
-            ignored_query_params: Regex::new(&format!("^({})$", self.ignored_query_params.join("|")))?,
-            trimmed_host_prefixes: Regex::new(&format!("\\A{}", self.trimmed_host_prefixes.join("|")))?,
-            trimmed_path_extension_suffixes: Regex::new(&format!("{}$", self.trimmed_path_extension_suffixes.join("|")))?,
-            path_extension_length: self.path_extension_length
+            ignored_query_params: Regex::new(&format!(
+                "^({})$",
+                self.ignored_query_params.join("|")
+            ))?,
+            trimmed_host_prefixes: Regex::new(&format!(
+                "\\A{}",
+                self.trimmed_host_prefixes.join("|")
+            ))?,
+            trimmed_path_extension_suffixes: Regex::new(&format!(
+                "{}$",
+                self.trimmed_path_extension_suffixes.join("|")
+            ))?,
+            path_extension_length: self.path_extension_length,
         })
     }
 
-    pub fn with_ignored_query_params<S: AsRef<str>, I: IntoIterator<Item = S>>(mut self, iter: I) -> Self {
+    pub fn with_ignored_query_params<S: AsRef<str>, I: IntoIterator<Item = S>>(
+        mut self,
+        iter: I,
+    ) -> Self {
         self.ignored_query_params = iter.into_iter().map(|s| s.as_ref().to_owned()).collect();
         self
     }
 
-    pub fn with_trimmed_host_prefixes<S: AsRef<str>, I: IntoIterator<Item = S>>(mut self, iter: I) -> Self {
+    pub fn with_trimmed_host_prefixes<S: AsRef<str>, I: IntoIterator<Item = S>>(
+        mut self,
+        iter: I,
+    ) -> Self {
         self.trimmed_host_prefixes = iter.into_iter().map(|s| s.as_ref().to_owned()).collect();
         self
     }
 
-    pub fn with_trimmed_path_extension_suffixes<S: AsRef<str>, I: IntoIterator<Item = S>>(mut self, iter: I) -> Self {
-        self.trimmed_path_extension_suffixes = iter.into_iter().map(|s| s.as_ref().to_owned()).collect();
+    pub fn with_trimmed_path_extension_suffixes<S: AsRef<str>, I: IntoIterator<Item = S>>(
+        mut self,
+        iter: I,
+    ) -> Self {
+        self.trimmed_path_extension_suffixes =
+            iter.into_iter().map(|s| s.as_ref().to_owned()).collect();
         self
     }
 
@@ -159,7 +177,9 @@ impl UrlNormalizer {
                         // Remove anything that looks like a trailing file type (.html, etc)
                         // We allow at most one numeric char
                         if let Some((a, b)) = curr.rsplit_once('.') {
-                            if b.len() <= self.path_extension_length && self.trimmed_path_extension_suffixes.is_match_at(b, 0) {
+                            if b.len() <= self.path_extension_length
+                                && self.trimmed_path_extension_suffixes.is_match_at(b, 0)
+                            {
                                 out.push(CompareToken(a));
                             } else {
                                 out.push(CompareToken(curr));
@@ -178,8 +198,7 @@ impl UrlNormalizer {
             for bit in query.split('&') {
                 if let Some((a, b)) = bit.split_once('=') {
                     query_pairs.push((a, b));
-                } else
-                {
+                } else {
                     query_pairs.push((bit, ""));
                 }
             }
@@ -242,7 +261,9 @@ impl UrlNormalizer {
 
 impl Default for UrlNormalizer {
     fn default() -> Self {
-        Options::default().compile().expect("Default options will always safely compile")
+        Options::default()
+            .compile()
+            .expect("Default options will always safely compile")
     }
 }
 
@@ -276,7 +297,7 @@ mod test {
         for line in testdata.split('\n') {
             let (url, existing_norm) = line.split_once("\",\"").expect("Expected one comma");
             let url = &url[1..url.len()];
-            let existing_norm = &existing_norm[0..existing_norm.len()-1];
+            let existing_norm = &existing_norm[0..existing_norm.len() - 1];
             let url = Url::parse(url).expect("Failed to parse URL");
             let expected_norm = norm.compute_normalization_string(&url);
             assert_eq!(existing_norm, expected_norm);
@@ -366,7 +387,10 @@ mod test {
     fn test_url_normalization_same(norm: UrlNormalizer, #[case] a: &str, #[case] b: &str) {
         let a = Url::parse(a).unwrap();
         let b = Url::parse(b).unwrap();
-        assert_eq!(norm.compute_normalization_string(&a), norm.compute_normalization_string(&b));
+        assert_eq!(
+            norm.compute_normalization_string(&a),
+            norm.compute_normalization_string(&b)
+        );
         assert!(norm.are_same(&a, &b), "{} != {}", a, b);
     }
 
@@ -397,7 +421,10 @@ mod test {
     fn test_url_normalization_different(norm: UrlNormalizer, #[case] a: &str, #[case] b: &str) {
         let a = Url::parse(a).unwrap();
         let b = Url::parse(b).unwrap();
-        assert_ne!(norm.compute_normalization_string(&a), norm.compute_normalization_string(&b));
+        assert_ne!(
+            norm.compute_normalization_string(&a),
+            norm.compute_normalization_string(&b)
+        );
         assert!(!norm.are_same(&a, &b), "{} != {}", a, b);
     }
 
