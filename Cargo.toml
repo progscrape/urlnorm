@@ -3,7 +3,9 @@ name = "urlnorm"
 version = "0.1.0"
 edition = "2021"
 description = "A URL normalization library for Rust"
-license = "Apache OR MIT"
+license = "Apache-2.0 OR MIT"
+repository = "https://github.com/progscrape/urlnorm"
+readme = "README.md"
 
 [features]
 nightly = []
