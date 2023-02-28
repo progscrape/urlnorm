@@ -1,5 +1,9 @@
 # urlnorm
 
+![Build Status](https://github.com/progscrape/urlnorm/actions/workflows/rust.yml/badge.svg)
+[![docs.rs](https://docs.rs/urlnorm/badge.svg)](https://docs.rs/urlnorm)
+[![crates.io](https://img.shields.io/crates/v/urlnorm.svg)](https://crates.io/crates/urlnorm)
+
 URL normalization library for Rust, mainly designed to normalize URLs for <https://progscrape.com>.
 
 The normalization algorithm uses the following heuristics:
