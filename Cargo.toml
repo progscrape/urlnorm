@@ -1,0 +1,12 @@
+[package]
+name = "urlnorm"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+url = "2.3"
+once_cell = "1.17"
+regex = "1.7"
+
+[dev_dependencies]
+rstest = "0"
