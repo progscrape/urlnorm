@@ -11,6 +11,7 @@ struct Options {
     pub path_extension_length: usize,
 }
 
+/// Default query parameters that are ignored.
 const DEFAULT_IGNORED_QUERY_PARAMS: [&str; 13] = [
     "utm_source",
     "utm_medium",
@@ -31,6 +32,7 @@ const DEFAULT_IGNORED_QUERY_PARAMS: [&str; 13] = [
 /// patterns like: www, www1, www-03, www-psych, www-refresh, m, mobile, etc.
 const DEFAULT_WWW_PREFIX: &str = "\\A(www?[0-9]*|m|mobile)(-[a-z0-9]{1,3})?\\.";
 
+/// By default, trim extensions that look like .html, .html5, etc.
 const DEFAULT_EXTENSION_SUFFIX: &str = "[a-zA-Z]+[0-9]?$";
 
 impl Default for Options {
@@ -55,15 +57,6 @@ impl Options {
     }
 
     pub fn compile(self) -> Result<UrlNormalizer, regex::Error> {
-        // /// Regular expression that trims common www- and mobile-style prefixes. From an analysis of the existing scrape dump, we have
-        // /// patterns like: www, www1, www-03, www-psych, www-refresh, m, mobile, etc.
-        // pub static ref WWW_PREFIX: Regex =
-        //     Regex::new("\\A(www?[0-9]*|m|mobile)(-[a-z0-9]{1,3})?\\.").expect("Failed to parse regular expression");
-        // pub static ref QUERY_PARAM_REGEX: Regex =
-        //     Regex::new(&IGNORED_QUERY_PARAMS.join("|")).expect("Failed to parse regular expression");
-        // pub static ref TRIM_EXTENSION_REGEX: Regex =
-        //     Regex::new("[a-zA-Z]+[0-9]?$").expect("Failed to parse regular expression");
-
         Ok(UrlNormalizer {
             ignored_query_params: Regex::new(&self.ignored_query_params.join("|"))?,
             trimmed_host_prefixes: Regex::new(&format!("\\A{}", self.trimmed_host_prefixes.join("|")))?,
@@ -144,7 +137,7 @@ impl<'a> PartialEq for EscapedCompareToken<'a> {
 
 impl UrlNormalizer {
     /// Generates a stream of token bits that can be used to compare whether URLs are "normalized-equal", that is: whether two URLs normalize to the same stream of tokens.
-    pub fn token_stream<'a, 'b>(&'a self, url: &'b Url) -> impl Iterator<Item = CompareToken<'b>> {
+    fn token_stream<'a, 'b>(&'a self, url: &'b Url) -> impl Iterator<Item = CompareToken<'b>> {
         let mut out = vec![];
         let host = url.host_str().unwrap_or_default();
         if let Some(stripped) = self.trimmed_host_prefixes.find_at(host, 0) {
@@ -210,10 +203,12 @@ impl UrlNormalizer {
         out.into_iter().filter(|s| !s.0.is_empty())
     }
 
+    /// Are these two URLs considered the same?
     pub fn are_same(&self, a: &Url, b: &Url) -> bool {
         self.token_stream(a).eq(self.token_stream(b))
     }
 
+    /// Compute a normalization string that can be persisted for later comparison.
     pub fn compute_normalization_string(&self, url: &Url) -> String {
         let mut s = String::with_capacity(url.as_str().len());
         for bit in self.token_stream(url) {
@@ -225,6 +220,7 @@ impl UrlNormalizer {
 
     // Note that clippy totally breaks this function
     #[allow(clippy::manual_filter)]
+    /// Normalize the host portion of a `Url`.
     pub fn normalize_host<'a>(&self, url: &'a Url) -> Option<&'a str> {
         if let Some(s) = url.host_str() {
             if let Some(n) = self.trimmed_host_prefixes.shortest_match_at(s, 0) {
