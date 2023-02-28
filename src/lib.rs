@@ -211,12 +211,14 @@ impl UrlNormalizer {
             }
         }
 
+        // Keep the fragment iff it looks significant
         let fragment = url.fragment().unwrap_or_default();
-        if fragment.starts_with('!') {
-            // #!-style fragment paths
-            out.push(CompareToken(&fragment[1..fragment.len()]));
-        } else if url.path().ends_with('/') && fragment.starts_with('/') {
-            // /#/-style fragment paths
+        // #!-style fragment paths
+        let hash_bang = fragment.starts_with('!');
+        // /#/-style fragment paths
+        let slash_hash_slash = url.path().ends_with('/') && fragment.starts_with('/');
+
+        if hash_bang || slash_hash_slash {
             out.push(CompareToken(&fragment[1..fragment.len()]));
         }
 
