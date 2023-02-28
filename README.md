@@ -13,6 +13,7 @@ The normalization algorithm uses the following heuristics:
  * The path is normalized by removing duplicate slashes and empty path segments, so that `http://example.com//foo/` and `http://example.com/foo`
    are considered equlivalent.
  * The query string parameters are sorted, and any analytics query parameters are removed (ie: `utm_XYZ` and the like).
+ * Fragments are dropped, with the exception of certain fragment patterns that are recognized as significant (`/#/` and `#!`)
 
 ## Usage
 
