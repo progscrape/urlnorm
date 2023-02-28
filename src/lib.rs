@@ -80,6 +80,7 @@ impl Options {
     }
 
     pub fn compile(self) -> Result<UrlNormalizer, regex::Error> {
+        // Per benchmark, Regex is faster than RegexSet
         Ok(UrlNormalizer {
             ignored_query_params: Self::compile_ignored_query_params_regex(
                 self.ignored_query_params,
@@ -177,7 +178,7 @@ impl<'a> PartialEq for EscapedCompareToken<'a> {
 impl UrlNormalizer {
     /// Generates a stream of token bits that can be used to compare whether URLs are "normalized-equal", that is: whether two URLs normalize to the same stream of tokens.
     fn token_stream<'a, 'b>(&'a self, url: &'b Url) -> impl Iterator<Item = CompareToken<'b>> {
-        let mut out = vec![];
+        let mut out = Vec::with_capacity(10);
         let host = self.normalize_host(url).unwrap_or_default();
         out.push(CompareToken(host));
         let path = url.path_segments();
@@ -209,20 +210,21 @@ impl UrlNormalizer {
         }
 
         if let Some(query) = url.query() {
-            let mut query_pairs = vec![];
+            let mut query_pairs = Vec::with_capacity(10);
             for bit in query.split('&') {
-                if let Some((a, b)) = bit.split_once('=') {
-                    query_pairs.push((a, b));
+                let (a, b) = if let Some((a, b)) = bit.split_once('=') {
+                    (a, b)
                 } else {
-                    query_pairs.push((bit, ""));
+                    (bit, "")
+                };
+                if !self.ignored_query_params.is_match(a) {
+                    query_pairs.push((a, b));
                 }
             }
             query_pairs.sort();
             for (key, value) in query_pairs {
-                if !self.ignored_query_params.is_match(key) {
-                    out.push(CompareToken(key));
-                    out.push(CompareToken(value));
-                }
+                out.push(CompareToken(key));
+                out.push(CompareToken(value));
             }
         }
 
