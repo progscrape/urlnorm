@@ -5309,7 +5309,7 @@
 "http://old.econ.ucdavis.edu/faculty/gclark/210a/readings/de%20Vries%20industrious.pdf","old.econ.ucdavis.edu:faculty:gclark:210a:readings:de%20Vries%20industrious:"
 "http://old.siggraph.org/publications/newsletter/v32n3/contributions/phillips.html","old.siggraph.org:publications:newsletter:v32n3:contributions:phillips:"
 "http://oldblog.antirez.com/post/take-advantage-of-redis-adding-it-to-your-stack.html","oldblog.antirez.com:post:take-advantage-of-redis-adding-it-to-your-stack:"
-"http://oldwww.acm.org/pubs/membernet/stories/floyd.pdf","oldwww.acm.org:pubs:membernet:stories:floyd:"
+"http://oldwww.acm.org/pubs/membernet/stories/floyd.pdf","acm.org:pubs:membernet:stories:floyd:"
 "http://oliverdamian.info/articles/bronte2bondi.html","oliverdamian.info:articles:bronte2bondi:"
 "http://omicsgroup.org/journals/decision-making-mindfulness-and-mood-how-mindfulness-techniques-can-reduce-the-impact-of-biases-10.41722167-1044.1000168.php?aid=36500","omicsgroup.org:journals:decision-making-mindfulness-and-mood-how-mindfulness-techniques-can-reduce-the-impact-of-biases-10.41722167-1044.1000168:aid:36500:"
 "http://on.natgeo.com/1DPJAkw#","on.natgeo.com:1DPJAkw:"
