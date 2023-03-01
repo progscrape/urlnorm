@@ -7,9 +7,6 @@ license = "Apache-2.0 OR MIT"
 repository = "https://github.com/progscrape/urlnorm"
 readme = "README.md"
 
-[features]
-nightly = []
-
 [dependencies]
 url = "2.3"
 regex = "1.7"
