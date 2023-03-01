@@ -6,23 +6,29 @@ use url::Url;
 
 /// Defines how URL normalization will work. This struct offers reasonable defaults, as well as a fluent interface for building normalization.
 ///
-/// Construct an empty `Options` object and provide a query parameter:
+/// Construct an empty [`Options`] object and provide a query parameter:
 ///
 /// ```
 /// # use urlnorm::*;
 /// let options = Options::new().with_ignored_query_params(["fbclid"]);
 /// ```
 ///
-/// Construct a default `Options` object and modify the query parameters:
+/// Construct a default [`Options`] object and modify the query parameters:
 ///
 /// ```
 /// # use urlnorm::*;
 /// let options = Options::default().with_ignored_query_params(["fbclid"]);
 /// ```
 pub struct Options {
+    /// Query parameters to ignore. These are wrapped in the regular expression beginning and end-of-string markers (ie: `^...$`).
     pub ignored_query_params: Vec<String>,
+    /// Host prefixes to trim. These match only at the start of the URL's host, and repeated matches will be removed.
     pub trimmed_host_prefixes: Vec<String>,
+    /// Path extensions to trim. These match only at the end of the path, and an end-of-string marker (`$`) is added to the patterns
+    /// automatically.
     pub trimmed_path_extension_suffixes: Vec<String>,
+    /// Specifies the maximum length of a path extension to remove. Some paths may contain periods that signify identify or have some
+    /// other meaning than marking a file extension.
     pub path_extension_length: usize,
 }
 
@@ -67,6 +73,7 @@ impl Default for Options {
 }
 
 impl Options {
+    /// Create a blank [`Options`] object which is not terribly useful for anything other than configuring.
     pub fn new() -> Self {
         Self {
             ignored_query_params: vec![],
@@ -99,6 +106,7 @@ impl Options {
         Regex::new(&format!("({})$", trimmed_path_extension_suffixes.join("|")))
     }
 
+    /// Compile this [`Options`] object to a [`UrlNormalizer`].
     pub fn compile(self) -> Result<UrlNormalizer, regex::Error> {
         // Per benchmark, Regex is faster than RegexSet
         Ok(UrlNormalizer {
