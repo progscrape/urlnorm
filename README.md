@@ -20,6 +20,11 @@ The normalization algorithm uses the following heuristics:
 For long-term storage and clustering of URLs, it is recommended that [`UrlNormalizer::compute_normalization_string`] is used to
 compute a representation of the URL that can be compared with standard string comparison operators.
 
+The normalization strings are not a perfect clustering algorithm for content, but they will tend to cluster URLs pointing to the
+same data together. For a more accurate clustering algorithm, this library can be paired with a more advanced DUST-aware processing
+algorithm (for example, see DustBuster from
+["Do Not Crawl in the DUST: Different URLs with Similar Text"](https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/35210.pdf)).
+
 ```rust
 # use url::Url;
 # use urlnorm::UrlNormalizer;
@@ -46,4 +51,7 @@ capradio.org:news:npr:story:storyid:382276026:
 
 http://www.charlotteobserver.com/2015/02/23/5534630/charlotte-city-council-approves.html#.VOxrajTF91E
 charlotteobserver.com:2015:02:23:5534630:charlotte-city-council-approves:
+
+http://www.m.webmd.com/melanoma-skin-cancer/news/20150409/fewer-us-children-getting-melanoma-study?src=RSS_PUBLIC
+webmd.com:melanoma-skin-cancer:news:20150409:fewer-us-children-getting-melanoma-study:src:RSS_PUBLIC:
 ```
