@@ -1,4 +1,4 @@
-"http://0-www.nature.com.es.library.du.ac.bd/nature/journal/vaop/ncurrent/full/nature14317.html","0-www.nature.com.es.library.du.ac.bd:nature:journal:vaop:ncurrent:full:nature14317:"
+"http://0-www.nature.com.es.library.du.ac.bd/nature/journal/vaop/ncurrent/full/nature14317.html","nature.com.es.library.du.ac.bd:nature:journal:vaop:ncurrent:full:nature14317:"
 "http://0a.io/0a-explains-set-theory-and-axiomatic-systems-with-pics-and-gifs","0a.io:0a-explains-set-theory-and-axiomatic-systems-with-pics-and-gifs:"
 "http://0fps.net/2012/01/14/an-analysis-of-minecraft-like-engines/","0fps.net:2012:01:14:an-analysis-of-minecraft-like-engines:"
 "http://0fps.net/2015/01/18/collision-detection-part-2/","0fps.net:2015:01:18:collision-detection-part-2:"

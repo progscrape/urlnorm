@@ -54,6 +54,7 @@ const DEFAULT_IGNORED_QUERY_PARAMS: [&str; 15] = [
 /// Regular expression that trims common www- and mobile-style prefixes. From an analysis of the existing scrape dump, we have
 /// patterns like: www, www1, www-03, www-psych, www-refresh, m, mobile, etc.
 const DEFAULT_WWW_PREFIX: &str = r#"(?x)
+    ([0-9]-?)?
     (www?[0-9]*|m|mobile)
     (-[a-z0-9]{1,3})?
     \.
