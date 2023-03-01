@@ -4,34 +4,6 @@ use std::str::Chars;
 use regex::Regex;
 use url::Url;
 
-/// Defines how URL normalization will work. This struct offers reasonable defaults, as well as a fluent interface for building normalization.
-///
-/// Construct an empty [`Options`] object and provide a query parameter:
-///
-/// ```
-/// # use urlnorm::*;
-/// let options = Options::new().with_ignored_query_params(["fbclid"]);
-/// ```
-///
-/// Construct a default [`Options`] object and modify the query parameters:
-///
-/// ```
-/// # use urlnorm::*;
-/// let options = Options::default().with_ignored_query_params(["fbclid"]);
-/// ```
-pub struct Options {
-    /// Query parameters to ignore. These are wrapped in the regular expression beginning and end-of-string markers (ie: `^...$`).
-    pub ignored_query_params: Vec<String>,
-    /// Host prefixes to trim. These match only at the start of the URL's host, and repeated matches will be removed.
-    pub trimmed_host_prefixes: Vec<String>,
-    /// Path extensions to trim. These match only at the end of the path, and an end-of-string marker (`$`) is added to the patterns
-    /// automatically.
-    pub trimmed_path_extension_suffixes: Vec<String>,
-    /// Specifies the maximum length of a path extension to remove. Some paths may contain periods that signify identify or have some
-    /// other meaning than marking a file extension.
-    pub path_extension_length: usize,
-}
-
 /// Default query parameters that are ignored.
 const DEFAULT_IGNORED_QUERY_PARAMS: [&str; 15] = [
     "utm_source",
@@ -63,6 +35,53 @@ const DEFAULT_WWW_PREFIX: &str = r#"(?x)
 
 /// By default, trim extensions that look like .html, .html5, etc.
 const DEFAULT_EXTENSION_SUFFIX: &str = "[a-zA-Z]+[0-9]?$";
+
+/// Defines how URL normalization will work. This struct offers reasonable defaults, as well as a fluent interface for building normalization.
+///
+/// Construct an empty [`Options`] object and provide a query parameter:
+///
+/// ```
+/// # use urlnorm::*;
+/// let options = Options::new().with_ignored_query_params(["fbclid"]);
+/// ```
+///
+/// Construct a default [`Options`] object and modify the query parameters:
+///
+/// ```
+/// # use urlnorm::*;
+/// let options = Options::default().with_ignored_query_params(["fbclid"]);
+/// ```
+///
+/// And once you've constructed the [`Options`] object, you can [`Options::compile`] it
+/// to a [`UrlNormalizer`]. This may fail if the regular expressions fail to compile.
+///
+/// ```
+/// # use urlnorm::*;
+/// let options: Options = Options::default().with_ignored_query_params(["fbclid"]);
+/// let normalizer: UrlNormalizer = options.compile().expect("Failed to compile");
+/// ```
+///
+/// In most cases, however, you'll want to just use [`UrlNormalizer::default()`] and can skip [`Options`] entirely. The
+/// default [`UrlNormalizer`] is also infallible:
+///
+/// ```
+/// # use url::Url;
+/// # use urlnorm::*;
+/// let normalizer = UrlNormalizer::default();
+/// let s = normalizer.compute_normalization_string(&Url::parse("http://google.com").unwrap());
+/// ```
+pub struct Options {
+    /// Query parameters to ignore. These are wrapped in the regular expression beginning and end-of-string markers (ie: `^...$`).
+    pub ignored_query_params: Vec<String>,
+    /// Host prefixes to trim. These match only at the start of the URL's host, and repeated matches will be removed.
+    pub trimmed_host_prefixes: Vec<String>,
+    /// Path extensions to trim. These match only at the end of the path, and an end-of-string marker (`$`) is added to the patterns
+    /// automatically.
+    pub trimmed_path_extension_suffixes: Vec<String>,
+    /// Specifies the maximum length of a path extension to remove. Some paths may contain periods that signify identify or have some
+    /// other meaning than marking a file extension.
+    pub path_extension_length: usize,
+}
 
 impl Default for Options {
     fn default() -> Self {
@@ -125,6 +144,7 @@ impl Options {
         })
     }
 
+    /// Replaces the ignored query parameters.
     pub fn with_ignored_query_params<S: AsRef<str>, I: IntoIterator<Item = S>>(
         mut self,
         iter: I,
@@ -133,6 +153,7 @@ impl Options {
         self
     }
 
+    /// Replaces the trimmed host prefixes.
     pub fn with_trimmed_host_prefixes<S: AsRef<str>, I: IntoIterator<Item = S>>(
         mut self,
         iter: I,
@@ -141,6 +162,7 @@ impl Options {
         self
     }
 
+    /// Replaces the trimmed path extensions.
     pub fn with_trimmed_path_extension_suffixes<S: AsRef<str>, I: IntoIterator<Item = S>>(
         mut self,
         iter: I,
@@ -150,6 +172,7 @@ impl Options {
         self
     }
 
+    /// Replaces the path extension length.
     pub fn with_path_extension_length(mut self, path_extension_length: usize) -> Self {
         self.path_extension_length = path_extension_length;
         self
@@ -466,8 +489,10 @@ mod test {
     #[case("https://google.com/?page=1", "https://google.com/?page=2")]
     #[case("https://google.com/?page=%31", "https://google.com/?page=%32")]
     #[case("https://amazon.com/product/ref=a", "https://amazon.com/product/ref=b")]
-    // Slightly modified query string param
+    // Negative case: slightly modified query string param
     #[case("http://x.com?xfbclid=foo", "http://x.com?xfbclid=basdf")]
+    // Negative case: long extension
+    #[case("http://x.com/file.html12345", "http://x.com/file.html12346")]
     // Examples of real URLs that should not be normalized together
     #[case("http://arxiv.org/abs/1405.0126", "http://arxiv.org/abs/1405.0351")]
     #[case(
