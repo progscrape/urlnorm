@@ -14,5 +14,22 @@ pub fn normalize_benchmark(c: &mut Criterion) {
     });
 }
 
-criterion_group!(benches, normalize_benchmark);
+pub fn torture_test(c: &mut Criterion) {
+    let x = std::iter::repeat("A5.html")
+        .take(50000)
+        .collect::<String>()
+        .to_owned();
+    let mut url_input = "https://goooooooogle.com/hello/index.html/".to_owned();
+    url_input.push_str(x.as_str());
+    let url = Url::parse(&url_input).unwrap();
+
+    let norm = UrlNormalizer::default();
+    c.bench_function("normalize url", |b| {
+        b.iter(|| {
+            norm.compute_normalization_string(&url);
+        })
+    });
+}
+
+criterion_group!(benches, normalize_benchmark, torture_test);
 criterion_main!(benches);
